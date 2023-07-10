@@ -1,0 +1,57 @@
+version: '3'
+
+networks:
+  laravelapp:
+    driver: bridge
+
+services:
+
+  ### PHP ###
+  phpfpm:
+    build:
+      context: .
+      dockerfile: ./.docker/php/Dockerfile
+    tty: true
+    restart: always
+    volumes:
+      - ./:/var/www
+      - ./docker/php/php.ini:/usr/local/etc/php/php.ini
+    working_dir: /var/www
+    networks:
+      - laravelapp
+
+  ### Mysql ###
+  database:
+    image: mysql:8.0.30
+    tty: true
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: laravel_db_name
+      MYSQL_USER: laravel_db_user
+      MYSQL_PASSWORD: laravel_db_pass
+      MYSQL_ROOT_HOST: "%"
+      MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+    ports:
+    - 3306:3306
+    volumes:
+      - ./.docker/db-data/:/var/lib/mysql
+    networks:
+      - laravelapp
+
+  ### Nginx ###
+  webserver:
+    image: nginx:1.24.0
+    restart: always
+    tty: true
+    depends_on:
+      - phpfpm
+    ports:
+      - "8001:80"
+    volumes:
+      - ./.docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+      - ./.docker/nginx/index.html:/usr/share/nginx/html/index.html
+      - ./:/var/www
+    working_dir: /var/www
+    networks:
+      - laravelapp
